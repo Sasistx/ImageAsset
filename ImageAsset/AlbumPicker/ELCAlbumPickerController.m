@@ -76,50 +76,13 @@
     NSMutableArray *tempArray = [[NSMutableArray alloc] init];
 	self.assetGroups = tempArray;
     
+    
     ALAssetsLibrary *assetLibrary = [[ALAssetsLibrary alloc] init];
     self.library = assetLibrary;
-
-    // Load Albums into assetGroups
-    dispatch_async(dispatch_get_main_queue(), ^
-    {
-        @autoreleasepool {
-            // Group enumerator Block
-            void (^assetGroupEnumerator)(ALAssetsGroup *, BOOL *) = ^(ALAssetsGroup *group, BOOL *stop)
-            {
-                if (group == nil) {
-                    return;
-                }
-                
-                // added fix for camera albums order
-                NSString *sGroupPropertyName = (NSString *)[group valueForProperty:ALAssetsGroupPropertyName];
-                NSUInteger nType = [[group valueForProperty:ALAssetsGroupPropertyType] intValue];
-                
-                if ([[sGroupPropertyName lowercaseString] isEqualToString:@"camera roll"] && nType == ALAssetsGroupSavedPhotos) {
-                    [self.assetGroups insertObject:group atIndex:0];
-                }
-                else {
-                    [self.assetGroups addObject:group];
-                }
-                
-                // Reload albums
-                [self performSelectorOnMainThread:@selector(reloadTableView) withObject:nil waitUntilDone:YES];
-            };
-            
-            // Group Enumerator Failure Block
-            void (^assetGroupEnumberatorFailure)(NSError *) = ^(NSError *error) {
-                
-                UIAlertView * alert = [[UIAlertView alloc] initWithTitle:@"Error" message:[NSString stringWithFormat:@"Album Error: %@ - %@", [error localizedDescription], [error localizedRecoverySuggestion]] delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
-                [alert show];
-                
-                NSLog(@"A problem occured %@", [error description]);
-            };
-            
-            // Enumerate Albums
-            [self.library enumerateGroupsWithTypes:ALAssetsGroupAll
-                                        usingBlock:assetGroupEnumerator 
-                                      failureBlock:assetGroupEnumberatorFailure];
-        }
-    });
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(libraryChanged:) name:ALAssetsLibraryChangedNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(assetChanged:) name:ALAssetLibraryUpdatedAssetsKey object:nil];
+    
+    [self loadAlbumData];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cancelImagePicker) name:@"elcpickerdissmiss" object:nil];
 }
@@ -137,6 +100,52 @@
     [self.navigationItem setRightBarButtonItem:barBtnAddChar];
 }
 
+- (void)loadAlbumData
+{
+    // Load Albums into assetGroups
+    
+    [self.assetGroups removeAllObjects];
+    dispatch_async(dispatch_get_main_queue(), ^
+                   {
+                       @autoreleasepool {
+                           // Group enumerator Block
+                           void (^assetGroupEnumerator)(ALAssetsGroup *, BOOL *) = ^(ALAssetsGroup *group, BOOL *stop)
+                           {
+                               if (group == nil) {
+                                   return;
+                               }
+                               
+                               // added fix for camera albums order
+                               NSString *sGroupPropertyName = (NSString *)[group valueForProperty:ALAssetsGroupPropertyName];
+                               NSUInteger nType = [[group valueForProperty:ALAssetsGroupPropertyType] intValue];
+                               
+                               if ([[sGroupPropertyName lowercaseString] isEqualToString:@"camera roll"] && nType == ALAssetsGroupSavedPhotos) {
+                                   [self.assetGroups insertObject:group atIndex:0];
+                               }
+                               else {
+                                   [self.assetGroups addObject:group];
+                               }
+                               
+                               // Reload albums
+                               [self performSelectorOnMainThread:@selector(reloadTableView) withObject:nil waitUntilDone:YES];
+                           };
+                           
+                           // Group Enumerator Failure Block
+                           void (^assetGroupEnumberatorFailure)(NSError *) = ^(NSError *error) {
+                               
+                               UIAlertView * alert = [[UIAlertView alloc] initWithTitle:@"Error" message:[NSString stringWithFormat:@"Album Error: %@ - %@", [error localizedDescription], [error localizedRecoverySuggestion]] delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil];
+                               [alert show];
+                               
+                               NSLog(@"A problem occured %@", [error description]);
+                           };
+                           
+                           // Enumerate Albums
+                           [self.library enumerateGroupsWithTypes:ALAssetsGroupAll
+                                                       usingBlock:assetGroupEnumerator 
+                                                     failureBlock:assetGroupEnumberatorFailure];
+                       }
+                   });
+}
 
 - (void)reloadTableView
 {
@@ -247,6 +256,38 @@
 - (void)dealloc 
 {	
 
+}
+
+#pragma mark - notification
+
+- (void)libraryChanged:(NSNotification*)note
+{
+    __weak ELCAlbumPickerController* weakSelf = self;
+    NSLog(@"libraryChanged:%@", note.userInfo);
+    NSSet* AssetsKey = note.userInfo[@"ALAssetLibraryUpdatedAssetsKey"];
+    NSLog(@"url:%@", AssetsKey);
+    if (AssetsKey) {
+        
+        [AssetsKey enumerateObjectsUsingBlock:^(id obj, BOOL *stop) {
+           
+            NSURL* urlStr = obj;
+            [weakSelf.library assetForURL:urlStr resultBlock:^(ALAsset *asset) {
+                
+                NSLog(@"date:%@", [asset valueForProperty:ALAssetPropertyDate]);
+            } failureBlock:^(NSError *error) {
+                
+            }];
+        }];
+        
+    }
+    [weakSelf loadAlbumData];
+//    NSString* assetUrl;
+//    [self.library assetForURL:<#(NSURL *)#> resultBlock:<#^(ALAsset *asset)resultBlock#> failureBlock:<#^(NSError *error)failureBlock#>]
+}
+
+- (void)assetChanged:(NSNotification*)note
+{
+    NSLog(@"assetChanged:%@", note.userInfo);
 }
 
 @end
