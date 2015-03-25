@@ -92,7 +92,7 @@
     UIButton* btnAddChat = [UIButton buttonWithType:UIButtonTypeCustom];
     [btnAddChat setTitle:@"取消" forState:UIControlStateNormal];
     [btnAddChat setFrame:CGRectMake(0, 0, 36, 36)];
-    [btnAddChat setTitleColor:[UIColor blueColor] forState:UIControlStateNormal];
+    [btnAddChat setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
     [btnAddChat addTarget:self action:@selector(cancelImagePicker) forControlEvents:UIControlEventTouchUpInside];
     if(IsIOS7)
         btnAddChat.contentEdgeInsets = UIEdgeInsetsMake(0, 0, 0, -20);

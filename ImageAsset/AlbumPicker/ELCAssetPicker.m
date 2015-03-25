@@ -85,7 +85,11 @@
 
             [weakself updateLayout];
             [_collectionView reloadData];
-            [_collectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:([_elcAssets count] - 1) inSection:0] atScrollPosition:UICollectionViewScrollPositionBottom animated:NO];
+            if ([_elcAssets count] != 0) {
+                
+                [_collectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:([_elcAssets count] - 1) inSection:0] atScrollPosition:UICollectionViewScrollPositionBottom animated:NO];
+            }
+
         });
         
     }
